@@ -16,6 +16,13 @@ import java.util.ArrayList;
 
 public class eSockets extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, NetworkInterface{
 
+    private static boolean UPDATE_SWITCHS = false;
+    ArrayList<Switch> switch_list = new ArrayList<>();
+    Switch smartphone;
+    Switch bed_lights;
+    Switch media_light;
+    Switch stereo;
+    Switch desktop;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +43,25 @@ public class eSockets extends AppCompatActivity implements CompoundButton.OnChec
         stereo.setOnCheckedChangeListener(this);
         desktop.setOnCheckedChangeListener(this);
 
+        switch_list.add(smartphone);
+        switch_list.add(stereo);
+        switch_list.add(bed_lights);
+        switch_list.add(media_light);
+        switch_list.add(desktop);
     }
+    @Override
+    public void onResume(){
+        super.onResume();
+        try {
+            JSONObject packet= new JSONObject();
+            packet.put("command", "socketStates");
+            startRequest(packet);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     /*******************************************************************************/
     /************MENU***************************************************************/
     @Override
@@ -69,6 +94,7 @@ public class eSockets extends AppCompatActivity implements CompoundButton.OnChec
 
     @Override
     public void serverResult(JSONObject result) {
+        UPDATE_SWITCHS = true;
         try {
             String command = result.get("command").toString();
             if(command.equals("socketStates")){
@@ -80,38 +106,41 @@ public class eSockets extends AppCompatActivity implements CompoundButton.OnChec
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        UPDATE_SWITCHS = false;
         //Log.e("answer", result.toString());
     }
 
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-        JSONObject packet= new JSONObject();
-        try{
-            packet.put("command","socket");
-            switch(compoundButton.getId()){
-                case R.id.button_smartphone:
-                    packet.put("id","1");
-                    break;
-                case R.id.button_bed_lights:
-                    packet.put("id","3");
-                    break;
-                case R.id.button_light:
-                    packet.put("id","4");
-                    break;
-                case R.id.button_stereo:
-                    packet.put("id","2");
-                    break;
-                case R.id.button_desktop:
-                    packet.put("id","5");
-                    break;
-                case R.id.button_off:
-                    packet.put("id","off");
-                    break;
+        if(!UPDATE_SWITCHS) {
+            JSONObject packet = new JSONObject();
+            try {
+                packet.put("command", "socket");
+                switch (compoundButton.getId()) {
+                    case R.id.button_smartphone:
+                        packet.put("id", "1");
+                        break;
+                    case R.id.button_bed_lights:
+                        packet.put("id", "3");
+                        break;
+                    case R.id.button_light:
+                        packet.put("id", "4");
+                        break;
+                    case R.id.button_stereo:
+                        packet.put("id", "2");
+                        break;
+                    case R.id.button_desktop:
+                        packet.put("id", "5");
+                        break;
+                    case R.id.button_off:
+                        packet.put("id", "off");
+                        break;
+                }
+                packet.put("state", b ? 1 : 0);
+                startRequest(packet);
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
-            packet.put("state",b?1:0);
-            startRequest(packet);
-        } catch (JSONException e) {
-            e.printStackTrace();
         }
     }
 }
