@@ -3,28 +3,39 @@ package online.ga78col.wheatley;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 
-public class eSockets extends AppCompatActivity implements View.OnClickListener{
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+public class eSockets extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, NetworkInterface{
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_e_sockets);
 
-        Button socketOne = (Button) findViewById(R.id.button_socket_1);
-        Button socketTwo = (Button) findViewById(R.id.button_socket_2);
-        Button socketThree = (Button) findViewById(R.id.button_socket_3);
-        Button socketOff = (Button) findViewById(R.id.button_socket_off);
-        Button socketSync = (Button) findViewById(R.id.button_socket_sync);
 
-        socketOne.setOnClickListener(this);
-        socketTwo.setOnClickListener(this);
-        socketThree.setOnClickListener(this);
-        socketOff.setOnClickListener(this);
-        socketSync.setOnClickListener(this);
+        smartphone = (Switch) findViewById(R.id.button_smartphone);
+        bed_lights = (Switch) findViewById(R.id.button_bed_lights);
+        media_light = (Switch) findViewById(R.id.button_light);
+        stereo = (Switch) findViewById(R.id.button_stereo);
+        //off = (Switch) findViewById(R.id.button_off);// has to be button
+        desktop = (Switch) findViewById(R.id.button_desktop);
+
+        smartphone.setOnCheckedChangeListener(this);
+        bed_lights.setOnCheckedChangeListener(this);
+        media_light.setOnCheckedChangeListener(this);
+        stereo.setOnCheckedChangeListener(this);
+        desktop.setOnCheckedChangeListener(this);
+
     }
     /*******************************************************************************/
     /************MENU***************************************************************/
@@ -50,26 +61,57 @@ public class eSockets extends AppCompatActivity implements View.OnClickListener{
     }
 
     @Override
-    public void onClick(View view) {
-        String cmd="";
-        switch(view.getId()){
-            case R.id.button_socket_1:
-                cmd = "socket,1,";
-                break;
-            case R.id.button_socket_2:
-                cmd = "socket,2,";
-                break;
-            case R.id.button_socket_3:
-                cmd = "socket,3,";
-                break;
-            case R.id.button_off:
-                cmd = "socket,off,";
-            case R.id.button_socket_sync:
-                //TODO implement sync mechanic
-                break;
+    public void startRequest(JSONObject packet) {
+        Log.e("cmd",packet.toString());
+        NetworkTask network = new NetworkTask(this);
+        network.send(packet);
+    }
 
+    @Override
+    public void serverResult(JSONObject result) {
+        try {
+            String command = result.get("command").toString();
+            if(command.equals("socketStates")){
+                for(int i=1;i<6;i++) {
+                    boolean state = result.getInt(String.valueOf(i))==1;
+                    switch_list.get(i).setChecked(state);
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-        NetworkTask network = new NetworkTask();
-        network.execute(cmd);
+        //Log.e("answer", result.toString());
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+        JSONObject packet= new JSONObject();
+        try{
+            packet.put("command","socket");
+            switch(compoundButton.getId()){
+                case R.id.button_smartphone:
+                    packet.put("id","1");
+                    break;
+                case R.id.button_bed_lights:
+                    packet.put("id","3");
+                    break;
+                case R.id.button_light:
+                    packet.put("id","4");
+                    break;
+                case R.id.button_stereo:
+                    packet.put("id","2");
+                    break;
+                case R.id.button_desktop:
+                    packet.put("id","5");
+                    break;
+                case R.id.button_off:
+                    packet.put("id","off");
+                    break;
+            }
+            packet.put("state",b?1:0);
+            startRequest(packet);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 }

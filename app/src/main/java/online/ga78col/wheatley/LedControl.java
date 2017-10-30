@@ -15,6 +15,9 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -23,7 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 
-public class LedControl extends AppCompatActivity implements View.OnClickListener,SeekBar.OnSeekBarChangeListener{
+public class LedControl extends AppCompatActivity implements View.OnClickListener,SeekBar.OnSeekBarChangeListener, NetworkInterface{
     private final static int BUTTON_CUSTOM = 0,BUTTON_FADE=1;
     private int BUTTON_STATE = BUTTON_CUSTOM;
     private Button customButton=null,fadeButton=null;
@@ -31,7 +34,6 @@ public class LedControl extends AppCompatActivity implements View.OnClickListene
     private Integer red = 0,green = 0,blue = 0, alpha = 255;
     private String fadeSpeed="100";
     int b_red=0,b_green=0,b_blue=255;
-    public String cmd;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,13 +63,17 @@ public class LedControl extends AppCompatActivity implements View.OnClickListene
                 BUTTON_STATE = BUTTON_FADE;
                 break;
             case R.id.button_off:
-                cmd = "lightsOff,0,";
-                NetworkTask network = new NetworkTask();
-                network.execute(cmd);
-                redSeekbar.setProgress(0);
-                greenSeekbar.setProgress(0);
-                blueSeekbar.setProgress(0);
-                break;
+                JSONObject packet = new JSONObject();
+                try {
+                    packet.put("command","lightsOff");
+                    startRequest(packet);
+                    redSeekbar.setProgress(0);
+                    greenSeekbar.setProgress(0);
+                    blueSeekbar.setProgress(0);
+                    break;
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             case R.id.button_custom:
                 BUTTON_STATE = BUTTON_CUSTOM;
                 break;
@@ -116,25 +122,43 @@ public class LedControl extends AppCompatActivity implements View.OnClickListene
 
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
-        switch(seekBar.getId()) {
-            case R.id.red_seekbar:
-                cmd = "red," + red.toString() + ",";
-                break;
-            case R.id.green_seekbar:
-                cmd = "green," + green.toString() + ",";
+        try {
+            JSONObject packet = new JSONObject();
+            switch (seekBar.getId()) {
+                case R.id.red_seekbar:
+                    packet.put("command", "red");
+                    packet.put("value", red);
+                    break;
+                case R.id.green_seekbar:
+                    packet.put("command", "green");
+                    packet.put("value", green);
+                    break;
+                case R.id.blue_seekbar:
+                    packet.put("command", "blue");
+                    packet.put("value", blue);
+                    break;
+                case R.id.button_fade:
+                    packet.put("command", "fade");
+                    packet.put("value", fadeSpeed);
+                    break;
+            }
+            if (BUTTON_STATE == BUTTON_CUSTOM) {
+                startRequest(packet);
+            }
+        }catch(JSONException e) {
+            e.printStackTrace();
+        }
+    }
 
-                break;
-            case R.id.blue_seekbar:
-                cmd = "blue," + blue.toString() + ",";
-                break;
-            case R.id.button_fade:
-                cmd = "fade," + fadeSpeed +",";
-                break;
-        }
-        if(BUTTON_STATE == BUTTON_CUSTOM) {
-            NetworkTask network = new NetworkTask();
-            network.execute(cmd);
-        }
+    @Override
+    public void startRequest(JSONObject packet) {
+        NetworkTask network = new NetworkTask(this);
+        network.execute(packet);
+    }
+
+    @Override
+    public void serverResult(JSONObject result) {
+
     }
 
     public class Fadeing extends AsyncTask<Void,Void,Void> {
